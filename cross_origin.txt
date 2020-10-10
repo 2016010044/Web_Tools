@@ -1,0 +1,88 @@
+1.什么是跨域：
+就是非同源请求，同源即端口号、主机和协议相同。
+2.为什么会出现：
+由于浏览器的同源策略限制，
+1）通常浏览器允许进行跨域的写操作，如链接、重定向
+2）通常浏览器允许跨域资源嵌入（Cross-origin embedding），如 img、script 标签	
+3）通常浏览器不允许跨域读操作（Cross-origin reads）
+
+jsonP:
+客户端：
+<script>
+    function getData(data) {
+        console.log(data);
+    }
+</script>
+<script src="http://localhost:3000/?callback=getData"></script>
+服务器端：
+  router.get('/', function(req, res, next) {
+    console.log(`收到客户端请求了: ${req.url}`);
+    var data = JSON.stringify({
+      status_code: 200,
+      result: {
+        name: '张三',
+        age: 18,
+        friends: ['李四', '王五', '赵六']
+      }
+    });
+    res.end(`${req.query.callback}(${data})`);
+  });
+
+原理：由于同源策略限制，虽然不能通过XMLhttprequest,但能引入js文件，随后触发回调，服务器将数据返回给客户端。
+优点：兼容性好，可以解决不同浏览器的跨域问题。
+缺点：只支持get请求，不安全，
+
+CORS：跨域资源共享，主要分为简单请求和非简单请求，平时差不多用到的就是get post，所以简单请求就够了，浏览器会自动在请求头中添加 origin 字段，我们不需要操作：origin ：http://localhost:3000。在服务器端：配置Access-Control-Allow-Origin属性。指定允许的请求源域名，可以通过指定为 *来指定所有域名。配置该属性的方式为：在app.js中添加如下代码：
+app.all('*', function(req, res, next) {
+   //  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+    res.header("Access-Control-Allow-Origin", "*");//*就是所有域名都能跨域
+    next();
+});
+app.use('/', index);
+
+postMessage:postMessage()方法允许来自不同源的脚本采用异步方式进行有限的通信，可以实现跨文本档、多窗口、跨域消息传递。
+postMessage(data,origin)方法接受两个参数：
+// 注意这里不是要获取iframe的dom引用，而是iframe window的引用
+var iframe = document.getElementById('iframe');
+iframe.contentWindow.postMessage(JSON.stringify(data), 'http://10.73.154.73:8088');
+ window.addEventListener('message', function(e) {
+                alert('data from domain2 sss ---> ' + e.data);
+            }, false)
+
+vue常用的跨域方法：
+在根目录下创建vue.config.js文件,内容参考如下：
+module.exports = {
+    publicPath: '/',
+    devServer: {
+        proxy: {
+            '/api': {
+                 target: 'http://demo.itlike.com/web/xlmc',
+                 changeOrigin: true,
+                 pathRewrite: {
+                     '^/api': ''
+                 }
+             },
+             //上面的pathRewrite就是遇到第二哥/api的时候替换为空，
+            '/pay': {
+                target: 'http://47.98.157.152/WXPayProject/pay',
+                changeOrigin: true,
+                pathRewrite: {
+                    '^/pay': ''
+                }
+            }
+        }
+    }
+};
+
+react常用跨域方法：
+在src目录下创建setupProxy.js,内容如下：
+const { createProxyMiddleware } = require('http-proxy-middleware');
+module.exports = function (app) {
+    app.use(
+        '/api',
+        createProxyMiddleware({
+            target: 'http://localhost:3001',
+            changeOrigin: true,
+        })
+    );
+};

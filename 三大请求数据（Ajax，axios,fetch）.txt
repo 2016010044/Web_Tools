@@ -1,0 +1,160 @@
+1.Ajax：ajax 是对原生XHR的封装。重点就是首先实例一个XMLHttpRequest对象，用其中的open方法建立连接；send方法传输数据（前端传到后台）；然后再利用onreadystatechange 监听readyState的变化，它本身针对MVC编程（最典型的MVC就是jsp+servlet+javabean模式）
+get:没有参数可以不用在url后面拼接
+  btn.addEventListener('click', function (ev1) {
+             var xhr = new XMLHttpRequest();
+             // 1. 获取用户输入的内容
+            var account = document.getElementById('account').value;
+            var pwd = document.getElementById('pwd').value;
+            xhr.open('get', 'http://localhost:3000/api/two?account=' + account + '&pwd=' + pwd + '&random=' + getRandomStr(), true);
+            xhr.send();
+            xhr.addEventListener('readystatechange', function (ev2) {
+                 if(xhr.readyState === 4 && xhr.status === 200){
+                     console.log(xhr.responseText);
+                 }
+            });
+        });
+post:没有参数在send中也不必写参数，请求头设不设置看需求
+ btn.addEventListener('click', function (ev1) {
+            // 1. 获取用户输入的内容
+            var account = document.getElementById('account').value;
+            var pwd = document.getElementById('pwd').value;
+            // 2. 创建网络请求对象
+            var xhr = new XMLHttpRequest();
+            xhr.open('post', 'http://localhost:3000/api/five', true);
+            // 设置请求头
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.send('name=zs&age=19');
+            xhr.addEventListener('readystatechange', function (ev2) {
+                if(xhr.readyState === 4 ){
+                   if(xhr.status === 200){
+                       console.log(xhr.responseText);
+                   }else {
+                       console.log('请求失败！');
+                   }
+                }
+            });
+        });
+优点：（这个整个页面刷新和局部页面刷新，整个页面刷新就是整个页面重新加载，局部刷新就是整个页面当中的一小块刷新）
+1.AJAX最大优点就是能在不刷新整个页面的前提下与服务器通信维护数据。
+2.AJAX使用异步方式与服务器通信，不需要打断用户的操作，具有更加迅速的响应能力。
+3.减轻服务器的负担,按需取数据,最大程度的减少冗余请求。
+4.基于xml标准化,并被广泛支持,不需安装插件等，进一步促进页面和数据的分离。
+5.局部刷新页面,减少用户心理和实际的等待时间,带来更好的用户体验。
+
+缺点：
+1.AJAX干掉了Back和History功能，即对浏览器机制的破坏。
+在动态更新页面的情况下，用户无法回到前一个页面状态，因为浏览器仅能记忆历史记录中的静态页面。一个被完整读入的页面与一个已经被动态修改过的页面之间的差别非常微妙；用户通常会希望单击后退按钮能够取消他们的前一次操作，但是在Ajax应用程序中，这将无法实现。 
+2.安全问题技术同时也对IT企业带来了新的安全威胁，ajax技术就如同对企业数据建立了一个直接通道。这使得开发者在不经意间会暴露比以前更多的数据和服务器逻辑。ajax的逻辑可以对客户端的安全扫描技术隐藏起来，允许黑客从远端服务器上建立新的攻击。还有ajax也难以避免一些已知的安全弱点，诸如跨站点脚步攻击、SQL注入攻击和基于credentials的安全漏洞等。 
+3.对搜索引擎的支持比较弱。如果使用不当，AJAX会增大网络数据的流量，从而降低整个系统的性能。
+4.基于原生的XHR开发，XHR本身的架构不清晰，已经有了fetch的替代方案。
+
+
+2.axios：axios其实就是在ajax的基础上加了promise，符合现在的MVVM（详见本目录下的MVVM）
+get:(不带参数把params去掉)
+ axios({
+            method: 'get',
+            url: 'http://demo.itlike.com/web/xlmc/api/homeApi/categoriesdetail/lk001',
+            // 参数传递
+            params: {
+                name: '张三',
+                age: 18
+            }
+        }).then((res) => {
+            console.log(res);
+        }).catch((error) => {
+            console.log(error);
+        })
+post:同理
+ axios({
+            method: 'post',
+            url: 'http://demo.itlike.com/web/xlmc/api/homeApi/categoriesdetail/lk001',
+            // 参数传递-data
+            data: {
+                name: '撩课学院',
+                age: 18
+            }
+        }).then((res) => {
+            console.log(res);
+        }).catch((error) => {
+            console.log(error);
+        })
+并发请求：
+axios.all([
+            axios({
+                url: 'http://demo.itlike.com/web/xlmc/api/homeApi/categoriesdetail/lk001'
+            }),
+            axios({
+                url: 'http://demo.itlike.com/web/xlmc/api/homeApi/categoriesdetail/lk002'
+            })
+        ]).then((result)=>{
+            console.log(result);
+        }).catch((error)=>{
+            console.log(error);
+        });
+axios.all返回的结果是一个数组，可以使用axios.spread将数组的值展开，如下：
+ axios.all([
+            axios({
+                url: 'http://demo.itlike.com/web/xlmc/api/homeApi/categoriesdetail/lk001'
+            }),
+            axios({
+                url: 'http://demo.itlike.com/web/xlmc/api/homeApi/categoriesdetail/lk002'
+            })
+        ]).then(axios.spread((res1, res2)=>{
+            console.log(res1);
+            console.log(res2);
+        }));
+优点：
+1.从浏览器中创建 XMLHttpRequest 
+2.从 node.js 发出 http 请求 
+3.支持 Promise API 
+4.拦截请求和响应 
+5.提供了一些并发请求的接口（重要，方便了很多的操作）。
+6.支持拦截请求和响应。
+7.转换请求和响应数据。
+8.取消请求。
+9.自动转换 JSON 数据。
+10.客户端支持防止CSRF。
+11.客户端支持防御 XSRF。（10和11浏览本目录下MVVM文件，这些在ajax中需要开发者将能被转换为html的输入内容，在写代码时改为innerText而不用innerHTML。（过滤用户输入的 检查用户输入的内容中是否有非法内容。如<>（尖括号）、”（引号）、 ‘（单引号）、%（百分比符号）、;（分号）、()（括号）、&（& 符号）、+（加号）等。、严格控制输出。或者实在没办法就对表单提交或者url参数传递前，对需要的参数进行过滤（return str.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g, "&quot;").replace(/'/g, "&#039;");），但在axios不需要开发者来处理）
+
+3.fetch:
+get:
+var req = new Request(URL, {method: 'GET', cache: 'reload'});
+fetch(req).then(function(response) {
+  return response.json();
+}).then(function(json) {
+  insertPhotos(json);
+});
+
+post:
+// 基于req对象创建新的postReq对象
+var postReq = new Request(req, {method: 'POST'});
+fetch(req).then(function(response) {
+  return response.json();
+}).then(function(json) {
+  insertPhotos(json);
+});
+
+优点：
+1.  语法简洁，更加语义化
+2.  基于标准 Promise 实现，支持 async/await
+3.  同构(为什么同构：目前，Fetch API在各个浏览器上的实现方式不一致。该模块将使您能够fetch以跨浏览器兼容的方式在Node代码中使用)方便，使用 [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch)，代码如下：
+require('isomorphic-fetch');
+fetch('//offline-news-api.herokuapp.com/stories')
+	.then(function(response) {
+		if (response.status >= 400) {
+			throw new Error("Bad response from server");
+		}
+		return response.json();
+	})
+	.then(function(stories) {
+		console.log(stories);
+	});
+4.更加底层，提供的API丰富（request, response）
+5.脱离了XHR，是ES规范里新的实现方式
+
+缺点:
+1）fetch只对网络请求报错，对400，500都当做成功的请求，服务器返回 400，500 错误码时并不会 reject，只有网络错误这些导致请求不能完成时，fetch 才会被 reject。
+2）fetch默认不会带cookie，需要添加配置项： fetch(url, {credentials: 'include'})
+3）fetch不支持abort，不支持超时控制，使用setTimeout及Promise.reject的实现的超时控制并不能阻止请求过程继续在后台运行，造成了流量的浪费
+4）fetch没有办法原生监测请求的进度，而XHR可以.
+5) fetch是一个低层次的API，你可以把它考虑成原生的XHR，所以使用起来并不是那么舒服，需要进行封装。

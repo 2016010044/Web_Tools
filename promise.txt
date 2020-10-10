@@ -1,0 +1,163 @@
+这里多一句嘴：就像如下代码是异步的，输出结果顺序无法预测：
+const fs=require("fs")
+fs.readFile(__dirname + '/data/a.txt', (err, data)=>{
+    console.log(data.toString());
+});
+
+fs.readFile(__dirname + '/data/b.txt', (err, data)=>{
+    console.log(data.toString());
+});
+为了让其有顺序的输出：就第一个请求输出有结果再去第二个请求，以此类推，就会形成回调地狱。
+fs.readFile(__dirname + '/data/a.txt', (err, data)=>{
+    console.log(data.toString());
+    fs.readFile(__dirname + '/data/b.txt', (err, data)=>{
+        console.log(data.toString());
+        fs.readFile(__dirname + '/data/c.txt', (err, data)=>{
+            console.log(data.toString());
+        });
+    });
+});
+为了解决这种问题，promise就出现了。
+new Promise(请求1)
+    .then(请求2(请求结果1))
+    .then(请求3(请求结果2))
+    .catch(处理异常(异常信息))             ----》
+new Promise((resolve, reject)=>{
+    fs.readFile(__dirname + '/data/a.txt', (err, data)=>{
+        // console.log(data.toString());
+        if(err){
+            reject(err);
+        }
+        resolve(data);
+    });
+    //如果resolve就会走then,如果reject就会走catch
+}).then((data)=>{
+   console.log(data.toString());
+   // 第二个promise
+   return new Promise((resolve, reject)=>{
+       fs.readFile(__dirname + '/data/bb.txt', (err, data)=>{
+           if(err){
+               reject(err);
+           }
+           resolve(data);
+       });
+   })
+}).then((data)=>{
+    console.log(data.toString());
+    // 第三个promise
+    return new Promise((resolve, reject)=>{
+        fs.readFile(__dirname + '/data/c.txt', (err, data)=>{
+            if(err){
+                reject(err);
+            }
+            resolve(data);
+        });
+    })
+}).then((data)=>{
+    console.log(data.toString());
+}).catch((err)=>{
+    console.log(err);
+});
+promise一经创建，立即执行。
+封装的一个写法：
+let readFile = (...args)=>{
+    return new Promise((resolve, reject)=>{
+        fs.readFile(...args, (err, data)=>{
+            if(err){
+                reject(err);
+            }
+            resolve(data);
+        });
+    })
+};
+readFile(path.join(__dirname, 'data/a.txt')).then((data)=>{
+    console.log(data.toString());
+    return readFile(path.join(__dirname, 'data/b.txt'));
+}).then((data)=>{
+    console.log(data.toString());
+});
+
+promise.all:
+let p1 = new Promise((resolve, reject)=>{
+    resolve('我成功了！');
+});
+let p2 = new Promise((resolve, reject)=>{
+    resolve('我财务自由了！');
+});
+let p3 = Promise.reject('我真的一无所有！');
+result就是所有的promise都有结果才会输出，只要有一个promise状态为reject则输出这个失败状态的promise返回的结果,
+并且是按照顺序执行的，即使p3比p1先执行完，但在调用promise.all方法时，还是先输出p1,再p3。
+Promise.all([p1, p3, p2]).then((result)=>{
+    console.log(result);
+}).catch((error)=>{
+    console.log(error);
+});
+
+promise.race:Promse.race就是赛跑的意思，意思就是说，Promise.race([p1, p2, p3])里面哪个结果获得的快，就返回那个结果，不管结果本身是成功状态还是失败状态（在抢票这样的场景中可能会遇到）
+let p1 = new Promise((resolve, reject)=>{
+    setTimeout(()=>{
+        resolve('我成功了！');
+    }, 100);
+});
+
+let p2 = new Promise((resolve, reject)=>{
+    setTimeout(()=>{
+        reject('我失败了！');
+    }, 50);
+});
+
+Promise.race([p2, p1]).then((result)=>{
+    console.log(result);
+}).catch((error)=>{
+    console.log(error);
+});
+
+async/await:
+async 用于声明异步函数，只要一个函数前面写了这个东西，那么它就是异步函数，await只能在前面加了async的函数里面使用，不能单独使用，二者相辅相成。
+async 返回的是一个Promise对象（就是在函数前面加了async，返回的就是一个promise，例如：async function itLike() {
+    return '撩课学院';
+}console.log(itLike());），// Promise{‘撩课学院’}                             
+await 后面跟一个promise对象，且必须是promise，但不必写then。
+二者的使用：
+async function itLike() {
+// await有点异步转同步的意思，就是等它执行完，后面才能执行
+    let result = await new Promise((resolve, reject)=>{
+         setTimeout(()=>{
+              resolve('后面的，等着');
+         }, 2000);
+    });
+    console.log(result);
+    console.log('------');
+}
+开发中的应用场景：
+let request = (time)=>{
+    return new Promise((resolve, reject)=>{
+        setTimeout(()=>{
+             resolve(time);
+        }, time);
+    })
+};
+promise写法：
+request(200).then((result)=>{
+     console.log(`第一次结果: ${result}`);
+     return request(result + 200);
+}).then((result)=>{
+    console.log(`第二次结果: ${result}`);
+    return request(result + 200);
+}).then((result)=>{
+    console.log(`第三次结果: ${result}`);
+}).catch(err=>{
+    console.log();
+});
+
+async/await写法:
+async function itLike() {
+    let res1 = await request(200);
+    let res2 = await request(res1 + 200);
+    return await request(res2 + 200);
+}
+itLike().then((res)=>{
+    console.log(res);
+}).catch((err)=>{
+    console.log(err);
+});
