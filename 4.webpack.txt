@@ -1,0 +1,413 @@
+1.为什么要使用webpack:
+因为在前端开发中，为了遵循模块化开发，会产生很多互相依赖的单独文件，在加载的时候会发送很多请求，导致加载速度慢，再比如一些像less或者es6的一些东西浏览器根本识别不了，这时就需要手动转为css,但是太麻烦了。为了解决诸多的问题就使用webpack,将这个js模块，css模块，img模块统统构建出压缩合并的产品。
+
+2.什么是webpack:
+说白了，它就是一个静态的打包工具，它把css,js,less等都当模块来处理，根据模块的依赖关系进行静态分析，打包成对应的静态资源(bundle)。他的过程大概就是 找到入口文件 --->  各种引入 ---> 根据各种依赖建立chunk块 ---> 把less转成css ES6/7/8/9 转成ES5 ---> 各种bundle包 --> 引入各种bundle包  执行。
+
+3.webpack默认打包的时候只会处理js和json，就像img，css等这些它都是处理不了的，需要使用loader，webpack有两种环境，开发环境(代码本地调试和运行的环境)和生产环境（代码优化上线运行的环境）。当只有js和json的时候打包的命令是这样的：webpack ./src/index.js  -o  ./build/dist.js --mode=development,这是在开发模式下，在生产模式下只需要将development换成production。（补充：在这个安装webpack的时候，也安装一下webpack-cli(npm i webpack webpack-cli --save-dev),--save-dev可以换成-D）
+
+4.webpack的核心
+1）entry：入口
+通常的写法是entry：'./src/index.js'（当前是字符串，还可以是array(entry:["",""])、object（entry：{"",""}））
+//多入口，多出口，有几个入口就会生成几个chunk,几个bundle
+混合使用：
+entry：{
+a:'./src/js/index.js',
+index：[
+'./src/js/index.js',
+]
+}
+(vue:['vue','vuex']这样的场景能用得到）
+2)output:出口
+通常写法是output: {filename: 'js/dist.js',path: resolve(__dirname, 'build')},但如果想让配置公共路径，就让生产的bundle在一个文件夹下，就要配置公共路径output: {filename: 'js/dist.js',path: resolve(__dirname, 'build')， publicPath:'/itlike'，library:'itlike } //配置打包后，如果库要对外暴露变量名就加最后一行代码 ，之后会在dist文件最上面多出var itlike={}
+3）loader：webpack默认只能处理js/json，但除此之外都不能处理，这时就要用到loader去处理那些非js,非json的东西。
+通常的写法：(这时打包样式资源的例子)
+ module: {
+        // 规则
+        rules: [
+            {
+                // 匹配哪些文件
+                test: /\.css$/,
+                // 使用哪些loader来处理这些匹配到的css文件
+                use: [
+                    // use中loader的加载顺序： 从下到上，从右到左，依次执行
+                    // 创建style标签，将js中的样式资源添加到页面的头部标签中
+                    'style-loader',
+                    // 将css文件转成commonJS模块， 加载到js中， 内容都是“样式字符串”
+                    'css-loader'
+                ]
+            },
+            {
+                test: /\.less$/,
+                use:[
+                    'style-loader',
+                    'css-loader',
+                    // 把less的代码转成css的代码
+                    // less less-loader
+                    'less-loader'
+                ]
+            }
+        ]
+    },
+4）plugins:插件可以让webpack的功能更广泛，例如打包优化、压缩等。
+写法：(这个例子是自动创建打包生成的html模板，在不用它的时候，每次需要手动的将src目录下的html文件复制到build下，用了它就不用手动复制了，会自动生成并引入，如果不想用自动生成的模板，还可以用template指明特定的html文件，不过需要安装引入html-webpack-plugin插件，const HtmlWebpackPlugin = require('html-webpack-plugin');)
+ plugins:[
+       // html-webpack-plugin
+       new HtmlWebpackPlugin({
+           template: './src/index.html'
+       })
+    ],
+5）modules:在模块化编程中，开发者将程序分解成离散功能块，并称之为模块
+6) mode:就是模式的选择
+通常写法是 mode: 'development',//or production
+7）devServer:服务器
+ devServer: {
+       // 项目构建后的路径
+       contentBase: resolve(__dirname, 'build'),
+       // 启动的端口号
+       port: 3000,
+       // 自动打开浏览器
+       // open: true
+       // 启用gzip压缩
+       compress: true
+   }
+
+5.webpack配置文件：它指示webpack要做那些事情，通常在根目录下创建一个webpack.config.js的文件，为了遵循nodejs的commonjs规范，通常写法是module.exports={},{}里面就是entry，output这些。在用了配置文件后，就可以直接使用webpack命令去打包了。
+
+6.处理图片资源，（需要安装一下file-loader）
+{
+                test: /\.(jpg|png|gif)$/,
+                // url-loader 依赖于 file-loader
+                loader: 'url-loader',
+                options: {
+                    // 图片的大小 < 60kb, 就进行base64的处理
+                    /*
+                      优点：减少请求的数量， 减轻服务器端的开销
+                      缺点： 文件请求速度变慢
+                    */
+                    limit: 60 * 1024,
+                    // 给图片重命名
+                    name: '[hash:24].[ext]'
+                }
+            },
+如果在模板文件即HTML文件中引入了照片，做如下处理：
+{
+test:/\.html$/,
+loader:'html-loader',
+}
+
+7.在打包之前，删除整个目标文件夹中的内容,这时就要在plugins中使用一个插件：clean-webpack-plugin(const { CleanWebpackPlugin } = require('clean-webpack-plugin');)
+plugins:[
+new CleanWebpackPlugin ()
+]
+
+8.打包字体图标：
+ 	// file-loader 打包其它文件资源
+           {
+               // 排除css/js/html
+               exclude: /\.(css|js|html|json)$/,
+               // npm i file-loader -D
+               loader: 'file-loader'
+           }
+就是把css,js,html,json除外（就是用这种方式来处理）
+
+9.开发服务器
+   npm i webpack-dev-server -D
+   webpack-dev-server: 开发服务器
+   - 自动化 (自动编译、自动打开浏览器、自动刷新浏览器、……)
+   - 特点： 只会在内存中打包、不会任何的真实输出（就是不会生成bundle包，只在内存中打包）
+   - 启动服务器 npx webpack-dev-server
+ devServer: {
+       // 项目构建后的路径
+       contentBase: resolve(__dirname, 'build'),
+       // 启动的端口号
+       port: 3000,
+       // 自动打开浏览器
+       // open: true
+       // 启用gzip压缩
+       compress: true
+   }
+
+10.补充
+1）就像在img,js打包之后都会在在dist文件中，如果向想要img，js等打包后生成对应的文件，就要设置输出的文件夹即在options中设置如下：
+options: {
+                   name: '[hash:12].[ext]',
+                   // 设置输出的文件夹
+                   outputPath: 'img'//or 'js'
+               }
+2）使用多个loader用use，使用一个loader，用loader  eg:loader:"url-loader"/use:[""，""]
+
+11.提取css文件：把构建的dist文件中把css提取出来
+需要使用一个插件 mini-css-extract-plugin(const MiniCssExtractPlugin = require('mini-css-extract-plugin');)使用它后就不能使用style-loader这个loader，将style-loader替换为MiniCssExtractPlugin.loader,接着在plugins中配置：
+plugins:[
+new MiniCssExtractPlugin ({
+filename: 'css/index.css',
+})
+]
+
+12.处理css兼容性问题：就是在用的时候可能会使用css3/css4的一些东西，打包打成低版本的，就会存在兼容性问题，在生成的包中可能会多出一些兼容性代码。使用如下：
+  use: [
+                   /*'style-loader',*/
+                   MiniCssExtractPlugin.loader,
+                   'css-loader',
+                   {
+	     //配置postcss-loader，处理css兼容性问题
+                      loader: 'postcss-loader',
+                       options: {
+                           ident: 'postcss',
+                           plugins: (loader) => [
+		//postcss-preset-env会将最新的CSS语法转换为目标环境的浏览器能够理解的CSS语法
+                               require('postcss-preset-env')()
+                           ]
+                       }
+                   }
+         ]	
+除此之外，在package.json中配置
+ "browserslist": {
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ],
+    "production": [
+      "> 0.2%",
+      "not dead"
+    ]
+  },
+另外process.env.NODE_ENV 可以切换当前模式，例如process.env.NODE_ENV = "development";配置在module.exports={}外面。
+
+13.压缩css
+使用插件：optimize-css-assets-webpack-plugin（const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');）
+plugins:[
+new OptimizeCssAssetsPlugin （）；
+]
+
+14.eslint语法检查：可能自己写的一些代码不规范，不使用eslint没事，因为不会给你检查，如果使用了eslint 它就会给你检查，不规范的话在打包的时候可能会报错。使用如下：
+npm i eslint  eslint-loader eslint-plugin-import  eslint-config-airbnb-base -D（最后用的是airbnb的标准来检查这个语法，使用eslint-config-airbnb-base需要在package.json中配置一下：
+ "eslintConfig": {
+    "extends": "airbnb-base"
+  }
+）
+ rules: [
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                loader: 'eslint-loader',
+                //  自动修复eslint语法错误
+                options: {
+                    fix: true
+                }
+            }
+        ]
+如果不想让eslint检查该行代码，只需在该行前面加上一行注释：// eslint-disable-next-line
+
+15.js语法兼容性处理：
+存在问题：
+             一些ES6/7/8的语法， 浏览器不能够完全识别，需要做兼容性（就像es6语法在chrome上可以运行
+            ，但在IE低版本浏览器报错，这时就用到babel，把高阶语法转成低阶的，但只能转一些普通的js语法，像promise这样的
+            就转不了，这时就用到了下面的“2）”，在js中引入@babel/polyfill）
+             1） babel-loader  依赖于 @babel/core  @babel/preset-env
+             npm i babel-loader @babel/core @babel/preset-env -D
+
+             2) 引入全局的js兼容性处理 --> @babel/polyfill
+             npm i @babel/polyfill -D
+如果是普通js:
+  {
+               test: /\.js$/,
+               exclude: /node_modules/,
+               loader: 'babel-loader',
+               options: {
+                   // 预设
+                   presets: ['@babel/preset-env']
+               }
+           }
+如果js中有像promise这样的
+npm i @babel/polyfill -D
+在js文件最前面加上 import '@babel/polyfill'
+一般就是二者结合使用。
+
+16.Babel和eslint冲突：如果有语法错误，就没必要做那个js兼容性处理，所以只要让eslint优先执行。如下代码：
+ {
+               test: /\.js$/,
+               exclude: /node_modules/,
+               loader: 'eslint-loader',
+               // 加上这一句： 优先执行
+               enforce: 'pre',
+               //  自动修复eslint语法错误
+               options: {
+                   fix: true
+               }
+           },
+
+17.压缩html和js:
+压缩html就是让生成的html去掉空格、移除注释就可以了：
+ new HtmlWebpackPlugin({
+           template: './src/index.html',
+           // 压缩HTML的代码
+           minify: {
+               // 移除空格
+               collapseWhitespace: true,
+               // 移除注释
+               removeComments: true
+           }
+       }),
+压缩js，首先将模式变为生产模式，接着：
+{
+               test: /\.js$/,
+               exclude: /node_modules/,
+               loader: 'babel-loader',
+               options: {
+                   // 预设
+                   presets: [
+                       [
+                           '@babel/preset-env',
+                           {
+                               // 按需加载
+                               useBuiltIns: 'usage',
+                               // 指定core-js的版本
+                               corejs: {
+                                   version: 3
+                               },
+                               // 指定兼容性做到哪个版本的浏览器
+                               targets: {
+                                   chrome: '60',
+                                   firefox: '60',
+                                   ie: '9',
+                                   edge: '16',
+                                   safari: '12'
+                               }
+                           }
+                       ]
+                   ]
+               }
+           }
+
+18.HMR：局部热部署（就是修改css样式代码或者js代码，就只加载局部修改的，不会全部加载，可以优化性能，提升速度）。
+首先需要开启热部署在devServer中添加代码： hot: true // 支持局部热更新  。
+ 1) 样式文件： 支持使用HMR功能， 必须是style-loader(内部实现了HMR)
+2) HTML文件：不支持使用HMR功能（不需要）
+ 但能实现-》修改入口：    entry: ['./src/js/index.js', './src/index.html'],
+3）js文件 -》修改js代码（但HMR只能处理非入口文件，）：
+if (module.hot) {
+  // module.hot 为true，开启了HMR功能
+  module.hot.accept('./router.js', () => {
+    logRouter();
+  });
+}
+
+19.source-map:生成源代码到构建后代码的映射， 映射--> 精准定位错误（如果写错了，可以找到对应的错误的地方）
+在这个module.exports={
+devtool: 'cheap-source-map'//取值很多，source-map/cheap-source-map/inline-source-map等。
+}
+
+20. oneOf :
+       1) 默认情况： 所有文件进入rules都会完整走一遍规则， 没有必要
+       2) oneOf : 只会匹配一个， 其它不会匹配
+rules: [
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                loader: 'eslint-loader',
+                enforce: 'pre',
+                options: {
+                    // fix: true
+                }
+            },
+            {
+                oneOf: [
+                    // 1. 样式相关
+                    {
+                        test: /\.css$/,
+                        use: [...commonCssLoader]
+                    },
+                    {
+                        test: /\.less$/,
+                        use: [...commonCssLoader, 'less-loader']
+                    },
+                ]
+            }
+        ]
+如上只会走oneof[]中的
+
+21.缓存：
+1)开启Babel缓存：cacheDirectory: true
+{
+                test: /\.js$/,
+                exclude: /node_modules/,
+                loader: 'babel-loader',
+                options: {
+                    presets: [
+                        [
+                            '@babel/preset-env',
+                            {
+                                useBuiltIns: 'usage',
+                                corejs: {
+                                    version: 3
+                                },
+                                targets: {
+                                    chrome: '60',
+                                    firefox: '60',
+                                    ie: '9',
+                                    edge: '16',
+                                    safari: '12'
+                                }
+                            }
+                        ]
+                    ],
+                    cacheDirectory: true
+                }
+            },
+2）开启文件资源缓存
+  改变文件名称
+        contenthash 【对文件内容级别的】-》chunkhash （**那个变了 改那个**）---》
+        hash（**每次每个构建打包都在变**）【工程级别】，就像如下
+output: {
+        filename: 'js/dist.[contenthash:10].js',
+        path: resolve(__dirname, 'build')
+    },
+ new MiniCssExtractPlugin({
+            filename: 'css/index.[contenthash:10].css',
+        }),
+等等，改变构建后的文件名称。
+
+22.代码分割：分割自有模块和三方模块
+分割三方的：在module.exports={
+optimization:{
+        splitChunks: {
+            chunks: 'all'
+        }
+    }
+}
+
+分割自有的：在入口文件中配置（入口：index.js,其他：other.js）
+import(/* webpackChunkName: 'other' */"./other.js").then((res)=>{
+    console.log(res);
+    console.log("文件加载成功！")
+}).catch(()=>{
+    console.log("文件加载失败！")
+});
+
+多入口一般会多输出，比如有两个入口文件，index,js,other.js，如果想让构建出的名字与构建前一样，在入口文件处应该这样写：
+output: {
+        filename: 'js/[name].js',
+        path: resolve(__dirname, 'build')
+    },
+
+如果想让不一样：  filename: 'js/dist.js',//dist自定义
+
+23.懒加载和预加载
+懒加载：默认加载的时候是从上往下加载，这样可能在文件特别大的时候会加载的特别慢，懒加载就是分流分掉了，只加载用到的，用不到的不加载或者在用的时候再去加载。
+预加载：优先加载要用到的，
+
+24.webpack和grunt ，glup的区别：
+webpack基于模块化打包的工具，有一个入口，最后打包生成一个出口，而后两者基于任务运行的工具，这个任务可以是webpack中环节的一部分。
+
+25.loader和plugin的区别：
+plugin是插件，它是扩展webpack的功能，让webpack更具有灵活性和可操作性，
+loader是加载器：对项目中的模块进行解析，就像css-loader只能解析css模块的东西。
+
+26.bundle,chunk,module
+bundle:打包出来的文件
+chunk：代码块，一个chunk由多个模块组成，用于代码的合并和分割。
+module：模块，一个模块对应一个文件，webpack会在entry中递归找出所有模块。
+
