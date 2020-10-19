@@ -14,6 +14,7 @@ get:没有参数可以不用在url后面拼接
             });
         });
 post:没有参数在send中也不必写参数，请求头设不设置看需求
+在open方法中的true为异步，如果为false就是同步。
  btn.addEventListener('click', function (ev1) {
             // 1. 获取用户输入的内容
             var account = document.getElementById('account').value;
