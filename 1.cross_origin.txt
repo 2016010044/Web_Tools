@@ -17,6 +17,7 @@ jsonP:
 服务器端：
   router.get('/', function(req, res, next) {
     console.log(`收到客户端请求了: ${req.url}`);
+    var _callback=req.query.callback;//接收到的是一个函数
     var data = JSON.stringify({
       status_code: 200,
       result: {
@@ -25,12 +26,32 @@ jsonP:
         friends: ['李四', '王五', '赵六']
       }
     });
-    res.end(`${req.query.callback}(${data})`);
+    res.end(_callback+"("+data+")");//相当于响应的是getData(data)的执行结果。
   });
 
 原理：由于同源策略限制，虽然不能通过XMLhttprequest,但能引入js文件，随后触发回调，服务器将数据返回给客户端。
 优点：兼容性好，可以解决不同浏览器的跨域问题。
 缺点：只支持get请求，不安全，
+
+req.query\req.params\req.body的区别：
+1.req.params:
+所对应的url长这个样子 http://localhost:3000/10
+app.get("/:id",function(req.res){
+res.send(req.params["id"]);
+})
+通过这样才能拿到id的值，即10；
+2.req.query:
+所对应的url长这个样子http://localhost:3000/?id=10
+app.get("/",function (req,res) {
+    res.send(req.query["id"]);
+});
+3.req.body:
+这个用在post请求中。通常用法：
+app.post("/login",(req,res,next)=>{
+req.body.pwd;
+req.body.name;
+})
+
 
 CORS：跨域资源共享，主要分为简单请求和非简单请求，平时差不多用到的就是get post，所以简单请求就够了，浏览器会自动在请求头中添加 origin 字段，我们不需要操作：origin ：http://localhost:3000。在服务器端：配置Access-Control-Allow-Origin属性。指定允许的请求源域名，可以通过指定为 *来指定所有域名。配置该属性的方式为：在app.js中添加如下代码：
 app.all('*', function(req, res, next) {
